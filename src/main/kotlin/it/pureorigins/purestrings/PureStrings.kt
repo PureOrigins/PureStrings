@@ -10,9 +10,6 @@ import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.ComponentUtils
 import net.minecraft.network.chat.TranslatableComponent
 import net.minecraft.network.protocol.game.ClientboundChatPacket
-import org.bukkit.Bukkit
-import org.bukkit.craftbukkit.v1_18_R1.CraftServer
-import org.bukkit.craftbukkit.v1_18_R1.entity.CraftPlayer
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.player.PlayerJoinEvent
@@ -59,7 +56,7 @@ class OverrideStringsPacketHandler(private val strings: Map<String, String>) : C
                     val text = replace.templateText("args" to args)
                     val field = ClientboundChatPacket::class.java.declaredFields.first { it.type == Component::class.java }
                     try {
-                        val commandSource = (Bukkit.getServer() as CraftServer).server.createCommandSourceStack()
+                        val commandSource = server.createCommandSourceStack()
                         unsafeSetField(field, packet, ComponentUtils.updateForEntity(commandSource, text, null, 0))
                         packet.components = null
                         packet.`adventure$message` = null
@@ -76,16 +73,16 @@ class OverrideStringsPacketHandler(private val strings: Map<String, String>) : C
     
     @EventHandler
     fun onPlayerJoin(event: PlayerJoinEvent) {
-        val player = event.player as CraftPlayer
-        player.handle.connection.connection.channel.pipeline()
+        val player = event.player
+        player.nms.connection.connection.channel.pipeline()
             .addLast("OverrideStringsPacketHandler", OverrideStringsPacketHandler(strings))
     }
     
     @EventHandler
     fun onPlayerQuit(event: PlayerQuitEvent) {
-        val player = event.player as CraftPlayer
-        player.handle.connection.connection.channel.eventLoop().submit {
-            player.handle.connection.connection.channel.pipeline().remove("OverrideStringsPacketHandler")
+        val player = event.player
+        player.nms.connection.connection.channel.eventLoop().submit {
+            player.nms.connection.connection.channel.pipeline().remove("OverrideStringsPacketHandler")
         }
     }
 }
