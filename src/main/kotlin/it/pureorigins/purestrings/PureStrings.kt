@@ -7,13 +7,8 @@ import io.netty.channel.ChannelPromise
 import io.papermc.paper.adventure.AdventureComponent
 import it.pureorigins.common.*
 import net.minecraft.network.chat.Component
-import net.minecraft.network.chat.ComponentUtils
 import net.minecraft.network.chat.TranslatableComponent
 import net.minecraft.network.protocol.game.ClientboundChatPacket
-import org.bukkit.event.EventHandler
-import org.bukkit.event.Listener
-import org.bukkit.event.player.PlayerJoinEvent
-import org.bukkit.event.player.PlayerQuitEvent
 import org.bukkit.plugin.java.JavaPlugin
 import java.util.*
 
@@ -21,11 +16,11 @@ import java.util.*
 class PureStrings : JavaPlugin() {
     override fun onEnable() {
         val strings = json.readFileAs<Map<String, String>>(file("strings.json"), HashMap())
-        registerEvents(OverrideStringsPacketHandler(strings))
+        registerPacketHandler(OverrideStringsPacketHandler(strings))
     }
 }
 
-class OverrideStringsPacketHandler(private val strings: Map<String, String>) : ChannelDuplexHandler(), Listener {
+class OverrideStringsPacketHandler(private val strings: Map<String, String>) : ChannelDuplexHandler() {
     override fun write(ctx: ChannelHandlerContext, packet: Any, promise: ChannelPromise) {
         if (packet is ClientboundChatPacket) {
             val keyArgs = when {
@@ -56,8 +51,7 @@ class OverrideStringsPacketHandler(private val strings: Map<String, String>) : C
                     val text = replace.templateText("args" to args)
                     val field = ClientboundChatPacket::class.java.declaredFields.first { it.type == Component::class.java }
                     try {
-                        val commandSource = server.createCommandSourceStack()
-                        unsafeSetField(field, packet, ComponentUtils.updateForEntity(commandSource, text, null, 0))
+                        unsafeSetField(field, packet, serverCommandSource.updateForEntity(text, null))
                         packet.components = null
                         packet.`adventure$message` = null
                     } catch (e: CommandSyntaxException) {
@@ -69,20 +63,5 @@ class OverrideStringsPacketHandler(private val strings: Map<String, String>) : C
             }
         }
         super.write(ctx, packet, promise)
-    }
-    
-    @EventHandler
-    fun onPlayerJoin(event: PlayerJoinEvent) {
-        val player = event.player
-        player.nms.connection.connection.channel.pipeline()
-            .addLast("OverrideStringsPacketHandler", OverrideStringsPacketHandler(strings))
-    }
-    
-    @EventHandler
-    fun onPlayerQuit(event: PlayerQuitEvent) {
-        val player = event.player
-        player.nms.connection.connection.channel.eventLoop().submit {
-            player.nms.connection.connection.channel.pipeline().remove("OverrideStringsPacketHandler")
-        }
     }
 }
