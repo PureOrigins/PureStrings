@@ -2,6 +2,7 @@ package it.pureorigins.purestrings
 
 import com.mojang.brigadier.exceptions.CommandSyntaxException
 import io.netty.channel.ChannelDuplexHandler
+import io.netty.channel.ChannelHandler
 import io.netty.channel.ChannelHandlerContext
 import io.netty.channel.ChannelPromise
 import io.papermc.paper.adventure.AdventureComponent
@@ -20,6 +21,7 @@ class PureStrings : JavaPlugin() {
     }
 }
 
+@ChannelHandler.Sharable
 class OverrideStringsPacketHandler(private val strings: Map<String, String>) : ChannelDuplexHandler() {
     override fun write(ctx: ChannelHandlerContext, packet: Any, promise: ChannelPromise) {
         if (packet is ClientboundChatPacket) {
